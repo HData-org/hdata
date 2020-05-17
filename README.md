@@ -4,6 +4,15 @@ HData is a JSON database solution written entirely in Node.JS.  It's memory resi
 
 Not only that, but you interact with the database entirely in JSON as well! You send queries and commands to the server in JSON, and the server responds in JSON. The data is saved in JSON internally and externally. It's JSON all around!
 
+## Limitations
+ * Saving blocks the main thread, so large DBs will slow things down
+ * Saving large DBs will consume lots of memory
+ * Crashes during saving may corrupt the DB
+ * Crashes before saving will result in up to 6 minutes of data being lost
+ * Deleting keys leads to slowdowns in indexing larger DBs
+ * Syncronous, does not use promises
+ * It uses JSON
+
 ## Documentation
 
 ### Creating an HData server
