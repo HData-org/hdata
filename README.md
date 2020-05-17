@@ -1,6 +1,6 @@
 # HData
 
-HData is a JSON database solution written entirely in Node.JS. It's JSON all around, except without all the issues of JSON. It's speedy, memory resident, and doesn't corrupt with simultanious writes. Reads and writes are executed in the sequence they're requested, so no more wrong values.
+HData is a JSON database solution written entirely in Node.JS.  It's memory resident and doesn't corrupt with simultanious writes. Reads and writes are executed in the sequence they're requested, so no more wrong values.
 
 Not only that, but you interact with the database entirely in JSON as well! You send queries and commands to the server in JSON, and the server responds in JSON. The data is saved in JSON internally and externally. It's JSON all around!
 
