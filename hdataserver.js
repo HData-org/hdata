@@ -26,39 +26,85 @@ function transfer(datadir) {
 }
 
 function load(map, datadir, since) {
+	since = since || 1;
 	console.log("Rebuilding database");
+	var then = new Date();
 	if (!fs.existsSync(datadir)) {
 		fs.mkdirSync(datadir);
 	}
 	var dir = fs.readdirSync(datadir);
-	for (var i = (since || 1); i <= dir.length; i++) {
-		var tmpdata = JSON.parse(fs.readFileSync(datadir + "/" + i));
-		switch (tmpdata.cmd) {
-			default:
-				break;
-			case "createtable":
+	var count = dir.length;
+	if (dir.indexOf("snapshot") != -1) {
+		var originalSince = since;
+		try {
+			count--;
+			var tmpdb = JSON.parse(fs.readFileSync(datadir+"/snapshot"));
+			since = tmpdb.upTo+1;
+			console.log("Loading snapshot from "+tmpdb.upTo);
+			for (var table in tmpdb.db) {
 				var tmpmap = new Map();
-				map.set(tmpdata.table, tmpmap);
-				break;
-			case "deletetable":
-				map.delete(tmpdata.table);
-				break;
-			case "setkey":
-				var tmpmap = map.get(tmpdata.table);
-				tmpmap.set(tmpdata.key, tmpdata.content);
-				break;
-			case "deletekey":
-				var tmpmap = map.get(tmpdata.table);
-				tmpmap.delete(tmpdata.key);
-				break;
+				map.set(table, tmpmap);
+				for (var key in tmpdb.db[table]) {
+					tmpmap.set(key, tmpdb.db[table]);
+				}
+			}
+			console.log("Loaded snapshot");
+		} catch(err) {
+			console.log("Failed to load snapshot");
+			map.clear();
+			since = originalSince;
+			count++;
 		}
 	}
-	console.log("Database rebuilt");
+	var allGood = true;
+	for (var i = (since || 1); i <= count && allGood; i++) {
+		try {
+			var tmpdata = JSON.parse(fs.readFileSync(datadir + "/" + i));
+			switch (tmpdata.cmd) {
+				default:
+					break;
+				case "createtable":
+					var tmpmap = new Map();
+					map.set(tmpdata.table, tmpmap);
+					break;
+				case "deletetable":
+					map.delete(tmpdata.table);
+					break;
+				case "setkey":
+					var tmpmap = map.get(tmpdata.table);
+					tmpmap.set(tmpdata.key, tmpdata.content);
+					break;
+				case "deletekey":
+					var tmpmap = map.get(tmpdata.table);
+					tmpmap.delete(tmpdata.key);
+					break;
+			}
+		} catch(err) {
+			allGood = false;
+			console.log("Failed to load entry "+i+", database loaded up until failure");
+			try {fs.unlinkSync(datadir+"/"+i);} catch(err) {}
+		}
+	}
+	var now = new Date();
+	console.log("Database rebuilt in "+((now-then)/1000)+" seconds using "+(dir.length-(since-1))+" records");
 }
 
 function transact(request, datadir) {
-	var num = fs.readdirSync(datadir).length;
-	fs.writeFileSync(datadir + "/" + (num + 1), JSON.stringify(request));
+	var num = fs.readdirSync(datadir).length+1;
+	if (fs.existsSync(datadir+"/snapshot")) {
+		num--;
+	}
+	fs.writeFileSync(datadir + "/" + num, JSON.stringify(request));
+	if (num % (config.snapshotFrequency || 20000) == 0) {
+		var tmpdb = {"upTo": num, "db": {}};
+		map.forEach(function(tmpmap, table) {
+			tmpdb.db[table] = {};
+			tmpmap.forEach(function(value, key) {
+				tmpdb.db[table][key] = value;
+			});
+		});
+		fs.writeFileSync(config.datadir+"/snapshot", JSON.stringify(tmpdb));
+	}
 }
 
 function runJob(c, request) {
@@ -167,7 +213,11 @@ if (process.argv.indexOf("-c") != -1) {
 	port = parseInt(process.argv[process.argv.indexOf("--config") + 1]);
 }
 
-var config = JSON.parse(fs.readFileSync(configpath));
+var config = {"port":8888, "datadir": "./data", "snapshotFrequency": 20000};
+
+if (fs.readFileSync(configpath)) {
+	config = JSON.parse(fs.readFileSync(configpath));
+}
 
 if (process.argv.indexOf("-l") != -1) {
 	port = parseInt(process.argv[process.argv.indexOf("-l") + 1]);
