@@ -138,9 +138,14 @@ function serverListener(c) {
 		if (buffer.endsWith("}\n")) {
 			var request = JSON.parse(buffer);
 			buffer = "";
-			jobs.push({ "c": c, "request": request });
-			if (jobs.length == 1) {
-				runJob(jobs[0].c, jobs[0].request);
+			if (request.cmd == "status") {
+				c.write("{\"status\":\"OK\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
+				c.end();
+			} else {
+				jobs.push({ "c": c, "request": request });
+				if (jobs.length == 1) {
+					runJob(jobs[0].c, jobs[0].request);
+				}
 			}
 		}
 	});
