@@ -61,9 +61,6 @@ function transact(request, datadir) {
 	fs.writeFileSync(datadir + "/" + (num + 1), JSON.stringify(request));
 }
 
-var config = JSON.parse(fs.readFileSync("config.json"));
-var jobs = [];
-
 function runJob(c, request) {
 	switch (request.cmd) {
 		default:
@@ -155,10 +152,30 @@ function serverListener(c) {
 	});
 }
 
+var port = 8888;
+var configpath = "config.json"
+var jobs = [];
+
+if (process.argv.indexOf("-c") != -1) {
+	port = parseInt(process.argv[process.argv.indexOf("-c") + 1]);
+} else if (process.argv.indexOf("--config") != -1) {
+	port = parseInt(process.argv[process.argv.indexOf("--config") + 1]);
+}
+
+var config = JSON.parse(fs.readFileSync(configpath));
+
+if (process.argv.indexOf("-l") != -1) {
+	port = parseInt(process.argv[process.argv.indexOf("-l") + 1]);
+} else if (process.argv.indexOf("--listen") != -1) {
+	port = parseInt(process.argv[process.argv.indexOf("--listen") + 1]);
+} else if (config.port != undefined) {
+	port = config.port;
+}
+
 if (fs.existsSync("./data.json")) {
 	transfer(config.datadir);
 }
 
 var map = new Map();
 load(map, config.datadir);
-net.createServer(serverListener).listen(8888);
+net.createServer(serverListener).listen(port);
