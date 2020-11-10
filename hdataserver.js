@@ -1,124 +1,100 @@
-process.on('uncaughtException', function(err) {
+process.on('uncaughtException', function (err) {
 	console.log(err);
-	fs.appendFileSync("./logs/error.log", "["+new Date().getTime()+"] "+err.toString()+"\n");
-});
-
-process.on("SIGINT", function() {
-	console.log("Saving before shutting down...");
-	if (saveTimeout != undefined) {clearInterval(saveTimeout);}
-	save();
-	process.exit();
+	if (!(fs.existsSync("./logs"))) {
+		fs.mkdirSync("logs");
+	}
+	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
 const net = require('net');
 const fs = require('fs');
-var keyschanged = 0;
-var cursavetime = 0;
+
+function transfer(datadir) {
+	console.log("Transfering old database...");
+	if (!fs.existsSync(datadir)) {
+		fs.mkdirSync(datadir);
+	}
+	var tmpdb = JSON.parse(fs.readFileSync("./data.json"));
+	for (var table in tmpdb) {
+		transact({"cmd":"createtable","table":table}, datadir);
+		for (var key in tmpdb[table]) {
+			transact({"cmd":"setkey","table":table,"key":key,"content":tmpdb[table][key]}, datadir);
+		}
+	}
+	fs.renameSync("./data.json", "./data.json.moved")
+	console.log("Old database transferred");
+}
+
+function load(map, datadir, since) {
+	console.log("Rebuilding database");
+	if (!fs.existsSync(datadir)) {
+		fs.mkdirSync(datadir);
+	}
+	var dir = fs.readdirSync(datadir);
+	for (var i = (since || 1); i <= dir.length; i++) {
+		var tmpdata = JSON.parse(fs.readFileSync(datadir + "/" + i));
+		switch (tmpdata.cmd) {
+			default:
+				break;
+			case "createtable":
+				var tmpmap = new Map();
+				map.set(tmpdata.table, tmpmap);
+				break;
+			case "deletetable":
+				map.delete(tmpdata.table);
+				break;
+			case "setkey":
+				var tmpmap = map.get(tmpdata.table);
+				tmpmap.set(tmpdata.key, tmpdata.content);
+				break;
+			case "deletekey":
+				var tmpmap = map.get(tmpdata.table);
+				tmpmap.delete(tmpdata.key);
+				break;
+		}
+	}
+	console.log("Database rebuilt");
+}
+
+function transact(request, datadir) {
+	var num = fs.readdirSync(datadir).length;
+	fs.writeFileSync(datadir + "/" + (num + 1), JSON.stringify(request));
+}
+
+var config = JSON.parse(fs.readFileSync("config.json"));
 var jobs = [];
 
-var adata = {}
-
-if (!(fs.existsSync("./logs"))) {
-	fs.mkdirSync("logs");
-}
-if (fs.existsSync("./data.json")) {
-	adata = JSON.parse(fs.readFileSync("./data.json"));
-} else {
-	fs.writeFileSync("./data.json", JSON.stringify(adata));
-}
-
-function save() {
-	fs.writeFileSync("./data.json", JSON.stringify(adata));
-	keyschanged = 0;
-	cursavetime = 0;
-	saveTimeout = undefined;
-	console.log("Saved.");
-}
-
-var saveTimeout = undefined;
-
-function incChanged() {
-	keyschanged++;
-	if (keyschanged >= 1 && keyschanged < 20) {
-		if (saveTimeout == undefined) {
-			saveTimeout = setTimeout(save, 360000);
-			cursavetime = 360000;
-		} else if (cursavetime > 360000) {
-			clearTimeout(saveTimeout);
-			saveTimeout = setTimeout(save, 360000);
-			cursavetime = 360000;
-		}
-	} else if (keyschanged >= 20 && keyschanged < 50) {
-		if (saveTimeout == undefined) {
-			saveTimeout = setTimeout(save, 60000);
-			cursavetime = 60000;
-		} else if (cursavetime > 60000) {
-			clearTimeout(saveTimeout);
-			saveTimeout = setTimeout(save, 60000);
-			cursavetime = 60000;
-		}
-	} else if (keyschanged >= 50 && keyschanged < 100) {
-		if (saveTimeout == undefined) {
-			saveTimeout = setTimeout(save, 30000);
-			cursavetime = 30000;
-		} else if (cursavetime > 30000) {
-			clearTimeout(saveTimeout);
-			saveTimeout = setTimeout(save, 30000);
-			cursavetime = 30000;
-		}
-	} else if (keyschanged >= 100 && keyschanged < 500) {
-		if (saveTimeout == undefined) {
-			saveTimeout = setTimeout(save, 15000);
-			cursavetime = 15000;
-		} else if (cursavetime > 15000) {
-			clearTimeout(saveTimeout);
-			saveTimeout = setTimeout(save, 15000);
-			cursavetime = 15000;
-		}
-	} else if (keyschanged >= 500 && keyschanged < 1000) {
-		if (saveTimeout == undefined) {
-			saveTimeout = setTimeout(save, 1000);
-			cursavetime = 1000;
-		} else if (cursavetime > 1000) {
-			clearTimeout(saveTimeout);
-			saveTimeout = setTimeout(save, 1000);
-			cursavetime = 1000;
-		}
-	} else if (keyschanged >= 1000) {
-		clearTimeout(saveTimeout);
-		save();
-	}
-}
-
-function runJob(c, cmdtmp) {
-	switch (cmdtmp.cmd) {
+function runJob(c, request) {
+	switch (request.cmd) {
 		default:
-		case "":
+			break;
 		case "status":
-			c.write("{\"status\":\"OK\",\"jobs\":\""+jobs.length+"\",\"keyschanged\":\""+keyschanged+"\"}\n");
+			c.write("{\"status\":\"OK\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
 			break;
 		case "createtable":
-			if (adata[cmdtmp.table] == undefined) {
-				adata[cmdtmp.table] = {};
-				incChanged();
-				c.write("{\"status\":\"OK\"}\n");
-			} else {
+			if (map.has(request.table)) {
 				c.write("{\"status\":\"TE\"}\n");
+			} else {
+				var tmpmap = new Map();
+				map.set(request.table, tmpmap);
+				transact(request, config.datadir);
+				c.write("{\"status\":\"OK\"}\n");
 			}
 			break;
 		case "deletetable":
-			if (adata[cmdtmp.table] != undefined) {
-				delete adata[cmdtmp.table];
-				incChanged();
+			if (map.has(request.table)) {
+				map.delete(request.table);
+				transact(request, config.datadir);
 				c.write("{\"status\":\"OK\"}\n");
 			} else {
 				c.write("{\"status\":\"TDNE\"}\n");
 			}
 			break;
 		case "getkey":
-			if (adata[cmdtmp.table] != undefined) {
-				if (adata[cmdtmp.table][cmdtmp.key] != undefined) {
-					c.write(JSON.stringify(adata[cmdtmp.table][cmdtmp.key])+"\n");
+			if (map.has(request.table)) {
+				var tmpmap = map.get(request.table);
+				if (tmpmap.has(request.key)) {
+					c.write(JSON.stringify(tmpmap.get(request.key)) + "\n");
 				} else {
 					c.write("{\"status\":\"KDNE\"}\n");
 				}
@@ -127,19 +103,21 @@ function runJob(c, cmdtmp) {
 			}
 			break;
 		case "setkey":
-			if (adata[cmdtmp.table] != undefined) {
-				adata[cmdtmp.table][cmdtmp.key] = cmdtmp.content;
-				incChanged();
+			if (map.has(request.table)) {
+				var tmpmap = map.get(request.table);
+				tmpmap.set(request.key, request.content);
+				transact(request, config.datadir);
 				c.write("{\"status\":\"OK\"}\n");
 			} else {
 				c.write("{\"status\":\"TDNE\"}\n");
 			}
 			break;
 		case "deletekey":
-			if (adata[cmdtmp.table] != undefined) {
-				if (adata[cmdtmp.table][cmdtmp.key] != undefined) {
-					delete adata[cmdtmp.table][cmdtmp.key];
-					incChanged();
+			if (map.has(request.table)) {
+				var tmpmap = map.get(request.table);
+				if (tmpmap.has(request.key)) {
+					tmpmap.delete(request.key, request.value);
+					transact(request, config.datadir);
 					c.write("{\"status\":\"OK\"}\n");
 				} else {
 					c.write("{\"status\":\"KDNE\"}\n");
@@ -148,44 +126,39 @@ function runJob(c, cmdtmp) {
 				c.write("{\"status\":\"TDNE\"}\n");
 			}
 			break;
-		case "save":
-			save();
-			c.write("{\"status\":\"OK\"}\n");
-			break;
 	}
 	c.end();
 	jobs.shift();
 	if (jobs.length > 0) {
-		runJob(jobs[0].c,jobs[0].cmdtmp);
+		runJob(jobs[0].c, jobs[0].request);
 	}
 }
 
-var server = net.createServer(function(c) {
-	var buf = "";
-	c.on('data', function(data) {
-		buf += data.toString();
-		if (buf.endsWith("\n")) {
-			try {
-				var cmdtmp = JSON.parse(buf);
-				jobs.push({"c":c,"cmdtmp":cmdtmp});
-				if (jobs.length == 1) {
-					runJob(jobs[0].c,jobs[0].cmdtmp);
-				}
-			} catch(err) {
-				c.write("{\"status\":\"ERR\"}\n");
-				c.end();
+function serverListener(c) {
+	var buffer = "";
+	c.on('data', function (data) {
+		buffer += data;
+		if (buffer.endsWith("}\n")) {
+			var request = JSON.parse(buffer);
+			buffer = "";
+			jobs.push({ "c": c, "request": request });
+			if (jobs.length == 1) {
+				runJob(jobs[0].c, jobs[0].request);
 			}
 		}
 	});
-});
+	c.on('end', function () {
 
-var port = 8888;
+	});
+	c.on('error', function (err) {
 
-if (process.argv.indexOf("-l") != -1) {
-	port = parseInt(process.argv[process.argv.indexOf("-l")+1]);
-} else if (process.argv.indexOf("--listen") != -1) {
-	port = parseInt(process.argv[process.argv.indexOf("--listen")+1]);
+	});
 }
 
-server.listen(port);
-console.log("HData server listening on "+port);
+if (fs.existsSync("./data.json")) {
+	transfer(config.datadir);
+}
+
+var map = new Map();
+load(map, config.datadir);
+net.createServer(serverListener).listen(8888);
