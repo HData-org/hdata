@@ -1,3 +1,6 @@
+# HData2
+
+
 # HData
 
 HData is a JSON database solution written entirely in Node.JS.  It's memory resident and doesn't corrupt with simultanious writes. Reads and writes are executed in the sequence they're requested, so no more wrong values.
@@ -6,12 +9,7 @@ Not only that, but you interact with the database entirely in JSON as well! You 
 
 ## Limitations
  * Saving blocks the main thread, so large DBs will slow things down
- * Saving large DBs will consume lots of memory
- * Crashes during saving may corrupt the DB
- * Crashes before saving will result in up to 6 minutes of data being lost
- * Deleting keys leads to slowdowns in indexing larger DBs
  * Syncronous, does not use promises
- * It uses JSON
 
 ## Documentation
 
@@ -128,17 +126,34 @@ conn.deleteKey("users", "herronjo", function(res,err) {
 });
 ```
 
-#### conn.save(callback)
-Forces the database to save immediately.
+#### conn.queryAll(evaluator, callback)
+Queries the database over all tables and keys, matching them against the evaluator specified. Returns all matches, including what table they're in, their values, and the key name.
+``evaluator`` is a standard JavaScript evaluator, such as ``key.startsWith("egg") && value.includes("br")``, which would return all keys whose names start with "egg" and have a value containing "br".
 
 ```js
-conn.save(function(res,err) {
+conn.queryAll('key.startsWith("egg") && value.includes("br")', function(res,err) {
     if (!err) {
-        if (res.status == "OK") {
-            console.log("Database saved!");
-        }
+        console.log(res);
     } else {
         console.log(err);
     }
 });
 ```
+
+Returns something like: ``[{"table": "users", "key": "egg123", "value": "bruh moment"},{"table": "users", "key": "eggbot", "value": "bread is cool"}]``
+
+#### conn.queryTable(tableName, evaluator, callback)
+Queries the database over just the table ``tableName`` and its keys, matching them against the evaluator specified. Returns all matches, including what table they're in, their values, and the key name.
+``evaluator`` is a standard JavaScript evaluator, such as ``key.startsWith("egg") && value.includes("br")``, which would return all keys whose names start with "egg" and have a value containing "br".
+
+```js
+conn.queryTable("users", 'key.startsWith("egg") && value.includes("br")', function(res,err) {
+    if (!err) {
+        console.log(res);
+    } else {
+        console.log(err);
+    }
+});
+```
+
+Returns something like the above example: ``[{"table": "users", "key": "egg123", "value": "bruh moment"},{"table": "users", "key": "eggbot", "value": "bread is cool"}]``

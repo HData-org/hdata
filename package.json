@@ -1,0 +1,23 @@
+{
+    "name": "hdata",
+    "version": "2.0.0",
+    "description": "A module for interacting with an HData server",
+    "main": "hdata.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/herronjo/hdata.git"
+    },
+    "keywords": [
+        "hdata",
+        "database",
+        "data"
+    ],
+    "author": "Joshua Herron",
+    "bugs": {
+        "url": "https://github.com/herronjo/hdata/issues"
+    },
+    "homepage": "https://github.com/herronjo/hdata#readme"
+}

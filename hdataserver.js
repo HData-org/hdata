@@ -8,6 +8,7 @@ process.on('uncaughtException', function (err) {
 
 const net = require('net');
 const fs = require('fs');
+const vm = require('vm');
 
 function transfer(datadir) {
 	console.log("Transfering old database...");
@@ -82,6 +83,7 @@ function load(map, datadir, since) {
 		} catch(err) {
 			allGood = false;
 			console.log("Failed to load entry "+i+", database loaded up until failure");
+			try {fs.unlinkSync(datadir+"/"+i);} catch(err) {}
 		}
 	}
 	var now = new Date();
@@ -112,6 +114,9 @@ function runJob(c, request) {
 			break;
 		case "status":
 			c.write("{\"status\":\"OK\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
+			break;
+		case "save":
+			c.write("{\"status\":\"OK\"}\n");
 			break;
 		case "createtable":
 			if (map.has(request.table)) {
@@ -164,6 +169,34 @@ function runJob(c, request) {
 				} else {
 					c.write("{\"status\":\"KDNE\"}\n");
 				}
+			} else {
+				c.write("{\"status\":\"TDNE\"}\n");
+			}
+			break;
+		case "queryall":
+			var response = { "status": "OK", "matches": [] };
+			for (var table in map) {
+				var tmpmap = map.get(request.table);
+				for (var key in tmpmap) {
+					var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
+					if (vm.runInContext('eval(evaluator);', ctx)) {
+						response.matches.push({ "table": table, "key": key, "value": value });
+					}
+				}
+			}
+			c.write(JSON.stringify(response) + "\n");
+			break;
+		case "querytable":
+			if (map.has(request.table)) {
+				var response = {"status":"OK","matches":[]};
+				var tmpmap = map.get(request.table);
+				for (var key in tmpmap) {
+					var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
+					if (vm.runInContext('eval(evaluator);', ctx)) {
+						response.matches.push({"table":table,"key":key,"value":value});
+					}
+				}
+				c.write(JSON.stringify(response)+"\n");
 			} else {
 				c.write("{\"status\":\"TDNE\"}\n");
 			}
