@@ -82,7 +82,6 @@ function load(map, datadir, since) {
 		} catch(err) {
 			allGood = false;
 			console.log("Failed to load entry "+i+", database loaded up until failure");
-			try {fs.unlinkSync(datadir+"/"+i);} catch(err) {}
 		}
 	}
 	var now = new Date();
