@@ -1,6 +1,3 @@
-# HData2
-
-
 # HData
 
 HData is a JSON database solution written entirely in Node.JS.  It's memory resident and doesn't corrupt with simultanious writes. Reads and writes are executed in the sequence they're requested, so no more wrong values.
