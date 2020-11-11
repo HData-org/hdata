@@ -175,9 +175,8 @@ function runJob(c, request) {
 			break;
 		case "queryall":
 			var response = { "status": "OK", "matches": [] };
-			for (var table in map) {
-				var tmpmap = map.get(request.table);
-				for (var key in tmpmap) {
+			for (const [table, tmpmap] of map.entries()) {
+				for (const [key, value] of tmpmap.entries()) {
 					var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
 					if (vm.runInContext('eval(evaluator);', ctx)) {
 						response.matches.push({ "table": table, "key": key, "value": value });
@@ -190,10 +189,10 @@ function runJob(c, request) {
 			if (map.has(request.table)) {
 				var response = {"status":"OK","matches":[]};
 				var tmpmap = map.get(request.table);
-				for (var key in tmpmap) {
+				for (const [key, value] of tmpmap.entries()) {
 					var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
 					if (vm.runInContext('eval(evaluator);', ctx)) {
-						response.matches.push({"table":table,"key":key,"value":value});
+						response.matches.push({"table":request.table,"key":key,"value":value});
 					}
 				}
 				c.write(JSON.stringify(response)+"\n");
