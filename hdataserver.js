@@ -200,6 +200,13 @@ function runJob(c, request) {
 				c.write("{\"status\":\"TDNE\"}\n");
 			}
 			break;
+		case "tableexists":
+			if (map.has(request.table)) {
+				c.write("true");
+			} else {
+				c.write("false");
+			}
+			break;
 	}
 	c.end();
 	jobs.shift();

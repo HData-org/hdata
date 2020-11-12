@@ -62,6 +62,10 @@ exports.HData = function (options) {
 		var cmd = { "cmd": "querytable", "table": tableName, "evaluator": evaluator };
 		this.sendCmd(cmd, callback);
 	}
+	this.tableExists = function (tableName) {
+		var cmd = { "cmd": "tableexists", "table": tableName };
+		this.sendCmd(cmd, callback);
+	}
 	this.save = function (callback) {
 		var cmd = { "cmd": "save" };
 		this.sendCmd(cmd, callback);

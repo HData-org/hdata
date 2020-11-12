@@ -154,3 +154,20 @@ conn.queryTable("users", 'key.startsWith("egg") && value.includes("br")', functi
 ```
 
 Returns something like the above example: ``[{"table": "users", "key": "egg123", "value": "bruh moment"},{"table": "users", "key": "eggbot", "value": "bread is cool"}]``
+
+#### conn.tableExists(tableName, callback)
+Checks if the table ``tableName`` already exists in the database.
+
+```js
+conn.tableExists("table", function(res,err) {
+    if (!err) {
+        if (res) {
+            console.log("Table exists!");
+        } else {
+            console.log("Table does not exist");
+        }
+    } else {
+        console.log(err);
+    }
+});
+```
