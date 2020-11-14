@@ -202,9 +202,9 @@ function runJob(c, request) {
 			break;
 		case "tableexists":
 			if (map.has(request.table)) {
-				c.write("true");
+				c.write("true\n");
 			} else {
-				c.write("false");
+				c.write("false\n");
 			}
 			break;
 	}
