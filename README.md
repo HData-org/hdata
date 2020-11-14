@@ -130,7 +130,7 @@ Queries the database over all tables and keys, matching them against the evaluat
 ```js
 conn.queryAll('key.startsWith("egg") && value.includes("br")', function(res,err) {
     if (!err) {
-        console.log(res);
+        console.log(res.matches);
     } else {
         console.log(err);
     }
@@ -146,7 +146,7 @@ Queries the database over just the table ``tableName`` and its keys, matching th
 ```js
 conn.queryTable("users", 'key.startsWith("egg") && value.includes("br")', function(res,err) {
     if (!err) {
-        console.log(res);
+        console.log(res.matches);
     } else {
         console.log(err);
     }
