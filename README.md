@@ -42,7 +42,7 @@ Returns the server's status and how many pending jobs it has, including the acti
 
 ```js
 conn.status(function(res, err) {
-    console.log(`Server has the status: ${res.status}, and has ${res.jobs} pending jobs. ${res.keyschanged} keys have been changed since last save.`);
+    console.log(`Server has the status: ${res.status}, and has ${res.jobs} pending jobs. ${res.tables} tables exist in the database.`);
 });
 ```
 
@@ -125,7 +125,7 @@ conn.deleteKey("users", "herronjo", function(res,err) {
 
 #### conn.queryAll(evaluator, callback)
 Queries the database over all tables and keys, matching them against the evaluator specified. Returns all matches, including what table they're in, their values, and the key name.
-``evaluator`` is a standard JavaScript evaluator, such as ``key.startsWith("egg") && value.includes("br")``, which would return all keys whose names start with "egg" and have a value containing "br".
+``evaluator`` is a standard JavaScript evaluator, such as ``key.startsWith("egg") && value.includes("br")``, which would return all keys whose names start with "egg" and have a value containing "br". The following variables exist in the scope the evaluator is evaluated in: ``key``, ``value``, and ``table``, which contain the key name, value of the key, and table the key is in respectively.
 
 ```js
 conn.queryAll('key.startsWith("egg") && value.includes("br")', function(res,err) {
@@ -141,7 +141,7 @@ Returns something like: ``[{"table": "users", "key": "egg123", "value": "bruh mo
 
 #### conn.queryTable(tableName, evaluator, callback)
 Queries the database over just the table ``tableName`` and its keys, matching them against the evaluator specified. Returns all matches, including what table they're in, their values, and the key name.
-``evaluator`` is a standard JavaScript evaluator, such as ``key.startsWith("egg") && value.includes("br")``, which would return all keys whose names start with "egg" and have a value containing "br".
+``evaluator`` is a standard JavaScript evaluator, such as ``key.startsWith("egg") && value.includes("br")``, which would return all keys whose names start with "egg" and have a value containing "br". The following variables exist in the scope the evaluator is evaluated in: ``key``, ``value``, and ``table``, which contain the key name, value of the key, and table the key is in respectively.
 
 ```js
 conn.queryTable("users", 'key.startsWith("egg") && value.includes("br")', function(res,err) {
@@ -166,6 +166,33 @@ conn.tableExists("table", function(res,err) {
         } else {
             console.log("Table does not exist");
         }
+    } else {
+        console.log(err);
+    }
+});
+```
+
+#### conn.tableSize(tableName, callback)
+Returns the number of keys in the table ``tableName``.
+
+```js
+conn.tableSize("table", function(res,err) {
+    if (!err) {
+        console.log("Table has "+res.size+" keys");
+    } else {
+        console.log(err);
+    }
+});
+```
+
+#### conn.tableKeys(tableName, callback)
+Returns an array of the names of all keys in ``tableName``
+
+
+```js
+conn.tableKeys("table", function(res,err) {
+    if (!err) {
+        console.log("Table has the following keys: "+JSON.stringify(res.keys));
     } else {
         console.log(err);
     }
