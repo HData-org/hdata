@@ -66,6 +66,14 @@ exports.HData = function (options) {
 		var cmd = { "cmd": "tableexists", "table": tableName };
 		this.sendCmd(cmd, callback);
 	}
+	this.tableSize = function (tableName, callback) {
+		var cmd = { "cmd": "tablesize", "table": tableName };
+		this.sendCmd(cmd, callback);
+	}
+	this.tableKeys = function (tableName, callback) {
+		var cmd = { "cmd": "tablekeys", "table": tableName };
+		this.sendCmd(cmd, callback);
+	}
 	this.save = function (callback) {
 		var cmd = { "cmd": "save" };
 		this.sendCmd(cmd, callback);
