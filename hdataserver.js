@@ -178,9 +178,11 @@ function runJob(c, request) {
 			for (const [table, tmpmap] of map.entries()) {
 				for (const [key, value] of tmpmap.entries()) {
 					var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
-					if (vm.runInContext('eval(evaluator);', ctx)) {
-						response.matches.push({ "table": table, "key": key, "value": value });
-					}
+					try {
+						if (vm.runInContext('eval(evaluator);', ctx)) {
+							response.matches.push({ "table": table, "key": key, "value": value });
+						}
+					} catch(err) {}
 				}
 			}
 			c.write(JSON.stringify(response) + "\n");
