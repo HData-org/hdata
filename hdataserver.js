@@ -218,7 +218,7 @@ function runJob(c, request) {
 		case "tablekeys":
 			if (map.has(request.table)) {
 				var tmpmap = map.get(request.table);
-				c.write("{\"status\":\"OK\",\"keys\":"+Array.from(tmpmap.keys())+"}\n");
+				c.write("{\"status\":\"OK\",\"keys\":"+JSON.stringify(Array.from(tmpmap.keys()))+"}\n");
 			} else {
 				c.write("{\"status\":\"TDNE\"}\n");
 			}
