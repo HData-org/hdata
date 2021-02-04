@@ -1,3 +1,5 @@
 logs/
 data/
 data.json
+priv.pem
+pub.pem
