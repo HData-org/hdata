@@ -1,5 +1,5 @@
-logs/
-data/
-data.json
-priv.pem
-pub.pem
+server/logs/
+server/data/
+server/data.json
+server/priv.pem
+server/pub.pem

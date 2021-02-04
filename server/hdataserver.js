@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 process.on('uncaughtException', function (err) {
 	console.log(err);
 	if (!(fs.existsSync("./logs"))) {
@@ -206,7 +208,7 @@ function runJob(c, request, username, userpub) {
 			break;
 		case "updatepassword":
 			var good = true;
-			if (request.user == "") {request.user = username;}
+			if (request.user == "" || request.user == undefined) {request.user = username;}
 			if (user.permissions.indexOf("updateuser") == -1 && request.user != username) {
 				good = false;
 			}

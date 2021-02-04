@@ -1,0 +1,26 @@
+{
+    "name": "hdata-server",
+    "version": "2.1.0",
+    "description": "The HData server",
+    "main": "hdataserver.js",
+    "bin": {
+        "hdata-server": "hdataserver.js"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/herronjo/hdata.git"
+    },
+    "keywords": [
+        "hdata",
+        "database",
+        "data"
+    ],
+    "author": "Joshua Herron",
+    "bugs": {
+        "url": "https://github.com/herronjo/hdata/issues"
+    },
+    "homepage": "https://github.com/herronjo/hdata#readme"
+}
