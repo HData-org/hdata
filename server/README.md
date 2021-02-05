@@ -36,6 +36,10 @@ $ cd hdata/server
 $ node hdataserver.js
 ```
 
+### Other info
+
 Data will be saved into a folder named ``data``, and logs written to a folder called ``logs`` also in the same folder. The data directory can be changed in config.json by chaing the ``datadir`` property.
 
 To listen on a different port, run ``node hdataserver.js -l {PORT}`` or ``node hdataserver.js --listen {PORT}``. You may also edit the config.json file and change the ``port`` property.
+
+To use a different configuration file, you can use the command line flags ``-c {CONFIG FILE}`` or ``--config {CONFIG FILE}`` to specify the new config.

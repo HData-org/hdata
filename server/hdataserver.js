@@ -485,7 +485,7 @@ if (process.argv.indexOf("-c") != -1) {
 
 var config = {"port":8888, "datadir": "./data", "snapshotFrequency": 20000};
 
-if (fs.readFileSync(configpath)) {
+if (fs.existsSync(configpath)) {
 	config = JSON.parse(fs.readFileSync(configpath));
 }
 
