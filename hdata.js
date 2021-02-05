@@ -7,7 +7,7 @@ function writeEnc(key, c, msg) {
 		tmp.push(msg.substring(i*128, i*128+128));
 	}
 	for (var i in tmp) {
-		c.write(crypto.publicEncrypt(key, tmp[i]));
+		c.write(crypto.publicEncrypt(key, Buffer.from(tmp[i])));
 	}
 }
 
