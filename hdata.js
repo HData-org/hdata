@@ -36,36 +36,57 @@ exports.HData = function (options) {
 			format: 'pem'
 		}
 	});
+	var connected = false;
+	var queue = [];
 	var serverpub = "";
 	var cli = net.connect(options.port, options.host, function () {});
 	function getServerPub(data) {
 		serverpub += data.toString();
 		if (serverpub.endsWith("\n")) {
+			connected = true;
 			writeEnc(serverpub, cli, keypair.publicKey+"\n");
 			cli.removeListener('data', getServerPub);
+			function doJobs() {
+				if (queue.length > 0) {
+					sendCmd(queue[0].cmd, function(res, err) {
+						if (err) {
+							console.error(err);
+						}
+						queue[0].callback(res, err);
+						queue.shift();
+						doJobs();
+					});
+				}
+			}
+			setTimeout(doJobs, 100);
 		}
 	}
 	cli.on('data', getServerPub);
-	this.sendCmd = function (cmd, callback) {
-		var buf = "";
-		try {
-			function getResponse(data) {
-				for (var i = 0; i < Math.ceil(data.length/512); i++) {
-					var tmp = data.slice(i*512, i*512+512);
-					buf += crypto.privateDecrypt(keypair.privateKey, tmp).toString();
+	function sendCmd (cmd, callback) {
+		if (!connected) {
+			queue.push({cmd:cmd, callback:callback});
+		} else {
+			var buf = "";
+			try {
+				function getResponse(data) {
+					for (var i = 0; i < Math.ceil(data.length/512); i++) {
+						var tmp = data.slice(i*512, i*512+512);
+						buf += crypto.privateDecrypt(keypair.privateKey, tmp).toString();
+					}
+					if (buf.endsWith("\n")) {
+						callback(JSON.parse(buf), undefined);
+						buf = "";
+						cli.removeListener('data', getResponse);
+					}
 				}
-				if (buf.endsWith("\n")) {
-					callback(JSON.parse(buf), undefined);
-					buf = "";
-					cli.removeListener('data', getResponse);
-				}
+				cli.on('data', getResponse);
+				writeEnc(serverpub, cli, JSON.stringify(cmd) + "\n");
+			} catch (err) {
+				callback({}, err);
 			}
-			cli.on('data', getResponse);
-			writeEnc(serverpub, cli, JSON.stringify(cmd) + "\n");
-		} catch (err) {
-			callback({}, err);
 		}
 	}
+	this.sendCmd = sendCmd;
 	this.status = function (callback) {
 		var cmd = { "cmd": "status" };
 		this.sendCmd(cmd, callback);
