@@ -329,16 +329,16 @@ function runJob(c, request, username, userpub) {
 		case "queryall":
 			if (user.permissions.indexOf("getkey") != -1) {
 				var response = { "status": "OK", "matches": [] };
-				for (const [table, tmpmap] of map.entries()) {
-					if (user.tables.indexOf(request.table) != -1) {
-						for (const [key, value] of tmpmap.entries()) {
-							var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
-							try {
-								if (vm.runInContext('eval(evaluator);', ctx)) {
-									response.matches.push({ "table": table, "key": key, "value": value });
-								}
-							} catch(err) {}
-						}
+				var keys = user.tables;
+				for (var table in keys) {
+					var tmpmap = map.get(table);
+					for (const [key, value] of tmpmap.entries()) {
+						var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
+						try {
+							if (vm.runInContext('eval(evaluator);', ctx)) {
+								response.matches.push({ "table": table, "key": key, "value": value });
+							}
+						} catch(err) {}
 					}
 				}
 				writeEnc(userpub, c, JSON.stringify(response) + "\n");
@@ -400,6 +400,10 @@ function runJob(c, request, username, userpub) {
 			} else {
 				writeEnc(userpub, c, "{\"status\":\"TDNE\"}\n");
 			}
+			break;
+		case "gettables":
+			var list = user.tables;
+			writeEnc(userpub, c, JSON.stringify(list)+"\n");
 			break;
 	}
 	//c.end();

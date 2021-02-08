@@ -139,6 +139,10 @@ exports.HData = function (options) {
 		var cmd = { "cmd": "queryall", "evaluator": evaluator };
 		this.sendCmd(cmd, callback);
 	}
+	this.getTables = function(callback) {
+		var cmd = { "cmd": "gettables" };
+		this.sendCmd(cmd, callback);
+	}
 	this.queryTable = function (tableName, evaluator, callback) {
 		var cmd = { "cmd": "querytable", "table": tableName, "evaluator": evaluator };
 		this.sendCmd(cmd, callback);

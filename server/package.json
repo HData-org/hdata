@@ -1,6 +1,6 @@
 {
     "name": "hdata-server",
-    "version": "2.1.2",
+    "version": "2.1.4",
     "description": "The HData server",
     "main": "hdataserver.js",
     "bin": {

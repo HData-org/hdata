@@ -195,6 +195,19 @@ conn.deleteKey("users", "herronjo", function(res,err) {
 });
 ```
 
+#### conn.getTables(callback)
+Returns a list of tables (that the user has access to) on the server.
+
+```js
+conn.getTables(function(res, err) {
+    if (!err) {
+        console.log(res); //Should return an array ["table1","table2"]
+    } else {
+        console.log(err);
+    }
+});
+```
+
 #### conn.queryAll(evaluator, callback)
 Queries the database over all tables and keys, matching them against the evaluator specified. Returns all matches, including what table they're in, their values, and the key name.
 ``evaluator`` is a standard JavaScript evaluator, such as ``key.startsWith("egg") && value.includes("br")``, which would return all keys whose names start with "egg" and have a value containing "br". The following variables exist in the scope the evaluator is evaluated in: ``key``, ``value``, and ``table``, which contain the key name, value of the key, and table the key is in respectively. Requires the ``getkey`` permission. Only queries tables the user has permission to read.
