@@ -107,6 +107,10 @@ exports.HData = function (options) {
 		var cmd = { "cmd": "deleteuser", "user": user };
 		this.sendCmd(cmd, callback);
 	}
+	this.getUser = function(user, callback) {
+		var cmd = { "cmd": "getuser", "user": user };
+		this.sendCmd(cmd, callback);
+	}
 	this.updateUser = function(user, property, content, callback) {
 		var cmd = { "cmd": "updateuser", "user": user, "property": property, "content": content };
 		this.sendCmd(cmd, callback);

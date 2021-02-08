@@ -92,6 +92,9 @@ conn.deleteUser("testuser", function(res, err) {
 });
 ```
 
+#### conn.getUser(username, callback)
+Returns an object containing the properties of the user ``username``. (Requires the currently logged in user to have the ``updateuser`` permission).
+
 #### conn.updateUser(username, property, content, callback)
 Updates the ``property`` of ``username`` with the value of ``content`` in the authentication database. (Requires the currently logged in user to have the ``updateuser`` permission).
 

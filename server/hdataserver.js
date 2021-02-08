@@ -191,6 +191,20 @@ function runJob(c, request, username, userpub) {
 				writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
 			}
 			break;
+		case "getuser":
+			if (user.permissions.indexOf("updateuser") != -1) {
+				if (authmap.has(request.user)) {
+					var tmpuser = JSON.parse(JSON.stringify(authmap.get(request.user)));
+					delete tmpuser.passhash;
+					delete tmpuser.passsalt;
+					writeEnc(userpub, c, JSON.stringify(tmpuser)+"\n");
+				} else {
+					writeEnc(userpub, c, "{\"status\":\"UDNE\"}\n");
+				}
+			} else {
+				writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
+			}
+			break;
 		case "updateuser":
 			if (user.permissions.indexOf("updateuser") != -1) {
 				if (authmap.has(request.user)) {
