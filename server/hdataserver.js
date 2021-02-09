@@ -8,6 +8,7 @@ process.on('uncaughtException', function (err) {
 	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
+const version = "2.1.7";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -146,7 +147,7 @@ function runJob(c, request, username, userpub) {
 		default:
 			break;
 		case "status":
-			writeEnc(userpub, c, "{\"status\":\"OK\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
+			writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
 			break;
 		case "save":
 			writeEnc(userpub, c, "{\"status\":\"OK\"}\n");
