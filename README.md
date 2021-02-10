@@ -38,7 +38,7 @@ Returns the server's status and how many pending jobs it has, including the acti
 
 ```js
 conn.status(function(res, err) {
-    console.log(`Server has the status: ${res.status}, and has ${res.jobs} pending jobs. ${res.tables} tables exist in the database.`);
+    console.log(`Server (version ${res.version}) has the status: ${res.status}, and has ${res.jobs} pending jobs. ${res.tables} tables exist in the database.`);
 });
 ```
 

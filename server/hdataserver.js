@@ -8,7 +8,7 @@ process.on('uncaughtException', function (err) {
 	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
-const version = "2.1.7";
+const version = "2.1.8";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -448,7 +448,7 @@ function serverListener(c) {
 				var request = JSON.parse(buffer);
 				buffer = "";
 				if (request.cmd == "status") {
-					writeEnc(userpub, c, "{\"status\":\"OK\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
+					writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
 					//c.end();
 				} else if (request.cmd == "login") {
 					if (user == undefined) {
