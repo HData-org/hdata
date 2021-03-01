@@ -16,7 +16,7 @@ Read [server/README.md](server/README.md)
 ### Using the HData Node.JS module
 
 #### Creating an HData connection
-To just use the default values (``{"host":"127.0.0.1","port":8888}``):
+To just use the default values (``{"host":"127.0.0.1","port":8888,"datadir":"./","cachecerts":true}``):
 
 ```js
 const HData = require('hdata').HData;
@@ -28,7 +28,9 @@ By default, HData makes a connection to 127.0.0.1:8888, but options can be passe
 const HData = require('hdata').HData;
 const options = {
     "host": "example.com",
-    "port": 8000
+    "port": 8000,
+    "datadir": "/var/www/app",
+    "cachecerts": false
 }
 const conn = new HData(options);
 ```

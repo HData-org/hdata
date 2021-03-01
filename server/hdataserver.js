@@ -8,7 +8,7 @@ process.on('uncaughtException', function (err) {
 	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
-const version = "2.1.9";
+const version = "2.1.10";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');

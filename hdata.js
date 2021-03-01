@@ -26,10 +26,16 @@ exports.HData = function (options) {
 	} else if (options.host.trim() == "") {
 		options.host = "127.0.0.1";
 	}
+	if (options.datadir == undefined) {
+		options.datadir = "./";
+	}
+	if (options.cachecerts == undefined) {
+		options.cachecerts = true;
+	}
 	var keypair = {};
-	if (fs.existsSync("./clientkey.pem") && fs.existsSync("./clientcert.pem")) {
-		keypair.publicKey = fs.readFileSync('./clientcert.pem','utf8');
-		keypair.privateKey = fs.readFileSync('./clientkey.pem','utf8');
+	if (options.cachecerts && fs.existsSync(options.datadir+"clientkey.pem") && fs.existsSync(options.datadir+"clientcert.pem")) {
+		keypair.publicKey = fs.readFileSync(options.datadir+'clientcert.pem', 'utf8');
+		keypair.privateKey = fs.readFileSync(options.datadir+'clientkey.pem', 'utf8');
 	} else {
 		keypair = crypto.generateKeyPairSync('rsa', {
 			modulusLength: 4096,
@@ -42,8 +48,12 @@ exports.HData = function (options) {
 				format: 'pem'
 			}
 		});
-		fs.writeFileSync("./clientkey.pem",keypair.privateKey.toString(),"utf8");
-		fs.writeFileSync("./clientcert.pem",keypair.publicKey.toString(),"utf8");
+		if (options.cachecerts) {
+			try {
+				fs.writeFileSync(options.datadir+"clientkey.pem", keypair.privateKey.toString(), "utf8");
+				fs.writeFileSync(options.datadir+"clientcert.pem", keypair.publicKey.toString(), "utf8");
+			} catch(err) {}
+		}
 	}
 	var connected = false;
 	var queue = [];
