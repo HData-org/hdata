@@ -1,3 +1,4 @@
+const fs = require('fs');
 const net = require('net');
 const crypto = require('crypto');
 
@@ -25,17 +26,25 @@ exports.HData = function (options) {
 	} else if (options.host.trim() == "") {
 		options.host = "127.0.0.1";
 	}
-	var keypair = crypto.generateKeyPairSync('rsa', {
-		modulusLength: 4096,
-		publicKeyEncoding: {
-			type: 'spki',
-			format: 'pem'
-		},
-		privateKeyEncoding: {
-			type: 'pkcs8',
-			format: 'pem'
-		}
-	});
+	var keypair = {};
+	if (fs.existsSync("./clientkey.pem") && fs.existsSync("./clientcert.pem")) {
+		keypair.publicKey = fs.readFileSync('./clientcert.pem','utf8');
+		keypair.privateKey = fs.readFileSync('./clientkey.pem','utf8');
+	} else {
+		keypair = crypto.generateKeyPairSync('rsa', {
+			modulusLength: 4096,
+			publicKeyEncoding: {
+				type: 'spki',
+				format: 'pem'
+			},
+			privateKeyEncoding: {
+				type: 'pkcs8',
+				format: 'pem'
+			}
+		});
+		fs.writeFileSync("./clientkey.pem",keypair.privateKey.toString(),"utf8");
+		fs.writeFileSync("./clientcert.pem",keypair.publicKey.toString(),"utf8");
+	}
 	var connected = false;
 	var queue = [];
 	var serverpub = "";
