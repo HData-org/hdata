@@ -288,3 +288,20 @@ conn.tableKeys("table", function(res,err) {
     }
 });
 ```
+
+
+## Error codes
+
+| Status | Meaning                                                  |
+| ------ | :------------------------------------------------------- |
+|   OK   | All good, no errors                                      |
+|   NLI  | Not logged in                                            |
+|   LI   | Logged in                                                |
+|  AERR  | Auth error (incorrect username/password)                 |
+|  PERR  | Permission error (you don't have permissions to do that) |
+|   UE   | User already exists                                      |
+|  UDNE  | User doesn't exist                                       |
+|   TE   | Table already exists                                     |
+|  TDNE  | Table doesn't exist                                      |
+|  KDNE  | Key doesn't exist                                        |
+
