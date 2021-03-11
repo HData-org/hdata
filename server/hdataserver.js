@@ -84,11 +84,11 @@ function load(map, authmap, datadir, since) {
 					map.set(tmpdata.table, tmpmap);
 					break;
 				case "deletetable":
-					for (var tmpuser in authmap) {
-						var i = authmap[tmpuser].tables.indexOf(tmpdata.table);
-						if (i != -1) {
-							var tmp = authmap[tmpuser];
-							tmp.tables.splice(i, 1);
+					for (var [tmpuser, value] of authmap.entries()) {
+						var i2 = value.tables.indexOf(tmpdata.table);
+						if (i2 != -1) {
+							var tmp = value;
+							tmp.tables.splice(i2, 1);
 							authmap.set(tmpuser, tmp);
 						}
 					}
@@ -106,6 +106,7 @@ function load(map, authmap, datadir, since) {
 		} catch(err) {
 			allGood = false;
 			console.log("Failed to load entry "+i+", database loaded up until failure");
+			console.log(err);
 			//try {fs.unlinkSync(datadir+"/"+i);} catch(err) {}
 		}
 	}
@@ -276,10 +277,10 @@ function runJob(c, request, username, userpub) {
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("deletetable") != -1 && user.tables.indexOf(request.table) != -1) {
 					map.delete(request.table);
-					for (var tmpuser in authmap) {
-						var i = authmap[tmpuser].tables.indexOf(request.table);
+					for (var [tmpuser, value] of authmap.entries()) {
+						var i = value.tables.indexOf(request.table);
 						if (i != -1) {
-							var tmp = authmap[tmpuser];
+							var tmp = value;
 							tmp.tables.splice(i, 1);
 							authmap.set(tmpuser, tmp);
 						}
