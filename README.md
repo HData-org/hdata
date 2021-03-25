@@ -304,4 +304,5 @@ conn.tableKeys("table", function(res,err) {
 |   TE   | Table already exists                                     |
 |  TDNE  | Table doesn't exist                                      |
 |  KDNE  | Key doesn't exist                                        |
+|  EVERR | Evaluation error (error with evaluator when querying)    |
 

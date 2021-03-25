@@ -8,7 +8,7 @@ process.on('uncaughtException', function (err) {
 	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
-const version = "2.1.10";
+const version = "2.1.13";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -144,6 +144,9 @@ function transact(request, datadir) {
 
 function runJob(c, request, username, userpub) {
 	var user = authmap.get(username);
+	if (!Array.isArray(user.permissions)) {
+		user.permissions = [];
+	}
 	switch (request.cmd) {
 		default:
 			break;
@@ -326,8 +329,8 @@ function runJob(c, request, username, userpub) {
 			break;
 		case "deletekey":
 			if (map.has(request.table)) {
+				var tmpmap = map.get(request.table);
 				if (tmpmap.has(request.key)) {
-					var tmpmap = map.get(request.table);
 					if (user.permissions.indexOf("deletekey") != -1 && user.tables.indexOf(request.table) != -1) {
 						tmpmap.delete(request.key, request.value);
 						transact(request, config.datadir);
@@ -344,17 +347,26 @@ function runJob(c, request, username, userpub) {
 			break;
 		case "queryall":
 			if (user.permissions.indexOf("getkey") != -1) {
+				var ctx = vm.createContext({"evaluator": request.evaluator});
 				var response = { "status": "OK", "matches": [] };
 				var keys = user.tables;
-				for (var table in keys) {
+				for (var tablei in keys) {
+					var table = keys[tablei];
 					var tmpmap = map.get(table);
 					for (const [key, value] of tmpmap.entries()) {
-						var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
+						//var ctx = vm.createContext({ "table": table, "key": key, "value": value, "evaluator": request.evaluator });
+						ctx.table = table;
+						ctx.key = key;
+						ctx.value = value;
+						var result = false;
 						try {
-							if (vm.runInContext('eval(evaluator);', ctx)) {
-								response.matches.push({ "table": table, "key": key, "value": value });
-							}
-						} catch(err) {}
+							result = vm.runInContext(request.evaluator, ctx);
+						} catch(err) {
+							writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+						}
+						if (result) {
+							response.matches.push({ "table": table, "key": key, "value": value });
+						}
 					}
 				}
 				writeEnc(userpub, c, JSON.stringify(response) + "\n");
@@ -365,12 +377,21 @@ function runJob(c, request, username, userpub) {
 		case "querytable":
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
+					var ctx = vm.createContext({"table": request.table, "evaluator": request.evaluator});
 					var response = {"status":"OK","matches":[]};
 					var tmpmap = map.get(request.table);
 					for (const [key, value] of tmpmap.entries()) {
-						var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
-						if (vm.runInContext('eval(evaluator);', ctx)) {
-							response.matches.push({"table":request.table,"key":key,"value":value});
+						//var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
+						ctx.key = key;
+						ctx.value = value;
+						var result = false;
+						try {
+							result = vm.runInContext(request.evaluator, ctx);
+						} catch(err) {
+							writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+						}
+						if (result) {
+							response.matches.push({ "table": request.table, "key": key, "value": value });
 						}
 					}
 					writeEnc(userpub, c, JSON.stringify(response)+"\n");
