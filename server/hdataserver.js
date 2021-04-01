@@ -259,10 +259,6 @@ function runJob(c, request, username, userpub) {
 					map.set(request.table, tmpmap);
 					user.tables.push(request.table);
 					authmap.set(username, user);
-					if (username != "root") {
-						var tmp2 = authmap.get("root");
-						tmp2.tables.push(request.table);
-					}
 					transact(request, config.datadir);
 					transact({"cmd":"updateuser","user":username,"property":"tables","content":user.tables}, config.datadir);
 					if (username != "root") {
