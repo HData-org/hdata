@@ -8,7 +8,7 @@ process.on('uncaughtException', function (err) {
 	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
-const version = "2.1.13";
+const version = "2.2.0";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -202,7 +202,7 @@ function runJob(c, request, username, userpub) {
 					var tmpuser = JSON.parse(JSON.stringify(authmap.get(request.user)));
 					delete tmpuser.passhash;
 					delete tmpuser.passsalt;
-					writeEnc(userpub, c, JSON.stringify(tmpuser)+"\n");
+					writeEnc(userpub, c, JSON.stringify({status:"OK",value:tmpuser})+"\n");
 				} else {
 					writeEnc(userpub, c, "{\"status\":\"UDNE\"}\n");
 				}
@@ -298,7 +298,7 @@ function runJob(c, request, username, userpub) {
 				var tmpmap = map.get(request.table);
 				if (tmpmap.has(request.key)) {
 					if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
-						writeEnc(userpub, c, JSON.stringify(tmpmap.get(request.key)) + "\n");
+						writeEnc(userpub, c, JSON.stringify({status:"OK",value:tmpmap.get(request.key)}) + "\n");
 					} else {
 						writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
 					}
@@ -401,9 +401,9 @@ function runJob(c, request, username, userpub) {
 		case "tableexists":
 			if (user.permissions.indexOf("getkey") != -1) {
 				if (map.has(request.table)) {
-					writeEnc(userpub, c, "true\n");
+					writeEnc(userpub, c, "{\"status\":\"OK\",\"value\":true}\n");
 				} else {
-					writeEnc(userpub, c, "false\n");
+					writeEnc(userpub, c, "{\"status\":\"OK\",\"value\":false}\n");
 				}
 			} else {
 				writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
@@ -436,7 +436,7 @@ function runJob(c, request, username, userpub) {
 			break;
 		case "gettables":
 			var list = user.tables;
-			writeEnc(userpub, c, JSON.stringify(list)+"\n");
+			writeEnc(userpub, c, JSON.stringify({status:"OK",value:list})+"\n");
 			break;
 	}
 	//c.end();

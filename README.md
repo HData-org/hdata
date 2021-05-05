@@ -4,9 +4,6 @@ HData is a JSON database solution written entirely in Node.JS.  It's memory resi
 
 Not only that, but you interact with the database entirely in JSON as well! You send queries and commands to the server in JSON, and the server responds in JSON. The data is saved in JSON internally and externally. It's JSON all around!
 
-## Limitations
- * Syncronous, does not use promises
-
 ## Documentation
 
 ### Creating an HData server
@@ -14,6 +11,29 @@ Not only that, but you interact with the database entirely in JSON as well! You 
 Read [server/README.md](server/README.md)
 
 ### Using the HData Node.JS module
+
+Note: all promises can be accessed under ``conn.promises`` and follow the same syntax, except without the callback. Values are returned in the promise resolve (``.then((value) => {})``) and errors are passed through a reject event (``.catch((err) => {})``)
+
+Example:
+
+```js
+const HData = require('hdata').HData;
+const conn = new HData();
+conn.login("root", "changeme", function(res, err) {
+    conn.getKey("test", "key", function(res2, err2) {
+        console.log(res2);
+    });
+});
+```
+becomes:
+```js
+const HData = require('hdata').HData;
+const conn = new HData();
+async function test() {
+    await conn.promises.login("root", "changeme");
+    console.log(await conn.promises.getKey("test", "key"));
+}
+```
 
 #### Creating an HData connection
 To just use the default values (``{"host":"127.0.0.1","port":8888,"datadir":"./","cachecerts":true}``):
