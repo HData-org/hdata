@@ -14,6 +14,7 @@ function writeEnc(key, c, msg) {
 }
 
 exports.HData = function (options) {
+	var errored = false;
 	if (options == undefined) {
 		options = {};
 	}
@@ -83,14 +84,20 @@ exports.HData = function (options) {
 					doJobs();
 				}
 			}
-			try {
-				cli.on('data', getResponse);
-				writeEnc(serverpub, cli, JSON.stringify(queue[0].cmd) + "\n");
-			} catch (err) {
-				cli.removeListener('data', getResponse);
-				queue[0].callback({}, err);
+			if (!errored) {
+				try {
+					cli.on('data', getResponse);
+					writeEnc(serverpub, cli, JSON.stringify(queue[0].cmd) + "\n");
+				} catch (err) {
+					cli.removeListener('data', getResponse);
+					queue[0].callback({}, err);
+					queue.shift();
+					buf = "";
+					doJobs();
+				}
+			} else {
+				queue[0].callback({}, new Error("Failed to connect to HData server"));
 				queue.shift();
-				buf = "";
 				doJobs();
 			}
 		}
@@ -107,13 +114,18 @@ exports.HData = function (options) {
 	}
 	cli.on('data', getServerPub);
 	cli.on('error', function(err) {
-		throw "Failed to connect to HData server"; //why can't I catch errors thrown by a constructor?
+		errored = true;
+		doJobs();
 	});
 	this.promises = {};
 	function sendCmd (cmd, callback) {
-		queue.push({cmd: cmd, callback: callback});
-		if (connected && queue.length == 1) {
-			doJobs();
+		if (!errored) {
+			queue.push({cmd: cmd, callback: callback});
+			if (connected && queue.length == 1) {
+				doJobs();
+			}
+		} else {
+			callback({}, new Error("Failed to connect to HData server"));
 		}
 	}
 	function sendCmdPromise (cmd) {
