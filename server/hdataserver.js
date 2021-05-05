@@ -8,11 +8,13 @@ process.on('uncaughtException', function (err) {
 	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
-const version = "2.2.0";
+const version = "2.2.1";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
+const cp = require('child_process');
 
 function transfer(datadir) {
 	console.log("Transfering old database...");
@@ -107,7 +109,6 @@ function load(map, authmap, datadir, since) {
 			allGood = false;
 			console.log("Failed to load entry "+i+", database loaded up until failure");
 			console.log(err);
-			//try {fs.unlinkSync(datadir+"/"+i);} catch(err) {}
 		}
 	}
 	var now = new Date();
@@ -350,7 +351,6 @@ function runJob(c, request, username, userpub) {
 					var table = keys[tablei];
 					var tmpmap = map.get(table);
 					for (const [key, value] of tmpmap.entries()) {
-						//var ctx = vm.createContext({ "table": table, "key": key, "value": value, "evaluator": request.evaluator });
 						ctx.table = table;
 						ctx.key = key;
 						ctx.value = value;
@@ -377,7 +377,6 @@ function runJob(c, request, username, userpub) {
 					var response = {"status":"OK","matches":[]};
 					var tmpmap = map.get(request.table);
 					for (const [key, value] of tmpmap.entries()) {
-						//var ctx = vm.createContext({ "table": request.table, "key": key, "value": value, "evaluator": request.evaluator });
 						ctx.key = key;
 						ctx.value = value;
 						var result = false;
@@ -439,7 +438,6 @@ function runJob(c, request, username, userpub) {
 			writeEnc(userpub, c, JSON.stringify({status:"OK",value:list})+"\n");
 			break;
 	}
-	//c.end();
 	jobs.shift();
 	if (jobs.length > 0) {
 		runJob(jobs[0].c, jobs[0].request, jobs[0].user, jobs[0].userpub);
@@ -460,6 +458,7 @@ function serverListener(c) {
 			if (buffer.endsWith("\n")) {
 				userpub = buffer;
 				buffer = "";
+				writeEnc(userpub, c, "\n");
 			}
 		} else {
 			if (buffer.endsWith("}\n")) {
@@ -467,14 +466,20 @@ function serverListener(c) {
 				buffer = "";
 				if (request.cmd == "status") {
 					writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
-					//c.end();
 				} else if (request.cmd == "login") {
 					if (user == undefined) {
 						var tmpuser = authmap.get(request.user);
-						if (tmpuser != undefined && crypto.pbkdf2Sync(request.password,tmpuser.passsalt,100000,512,'sha512').toString('hex') == tmpuser.passhash) {
-							username = request.user;
-							user = tmpuser;
-							writeEnc(userpub, c, '{"status":"OK"}\n');
+						if (tmpuser != undefined) {
+							var child = cp.fork(path.dirname(fs.realpathSync(__filename)) + '/hash.js', [], {serialization: 'json', env: {password: request.password, passsalt: tmpuser.passsalt, passhash: tmpuser.passhash}});
+							child.on('message', function(data) {
+								if (data) {
+									username = request.user;
+									user = tmpuser;
+									writeEnc(userpub, c, '{"status":"OK"}\n');
+								} else {
+									writeEnc(userpub, c, '{"status":"AERR"}\n');
+								}
+							});
 						} else {
 							writeEnc(userpub, c, '{"status":"AERR"}\n');
 						}

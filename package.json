@@ -1,6 +1,6 @@
 {
     "name": "hdata",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "description": "A module for interacting with an HData server",
     "main": "hdata.js",
     "scripts": {

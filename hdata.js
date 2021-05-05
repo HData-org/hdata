@@ -1,7 +1,6 @@
 const fs = require('fs');
 const net = require('net');
 const crypto = require('crypto');
-const constants = require('constants');
 
 function writeEnc(key, c, msg) {
 	var tmp = [];
@@ -104,12 +103,17 @@ exports.HData = function (options) {
 	}
 	var cli = net.connect(options.port, options.host, function () {});
 	function getServerPub(data) {
-		serverpub += data.toString();
-		if (serverpub.endsWith("\n")) {
-			connected = true;
-			writeEnc(serverpub, cli, keypair.publicKey+"\n");
+		if (!connected) {
+			serverpub += data.toString();
+			if (serverpub.endsWith("\n")) {
+				connected = true;
+				writeEnc(serverpub, cli, keypair.publicKey+"\n");
+				//cli.removeListener('data', getServerPub);
+				//setTimeout(doJobs, 100);
+			}
+		} else {
 			cli.removeListener('data', getServerPub);
-			setTimeout(doJobs, 2);
+			doJobs();
 		}
 	}
 	cli.on('data', getServerPub);
