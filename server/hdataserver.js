@@ -8,13 +8,14 @@ process.on('uncaughtException', function (err) {
 	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
-const version = "2.2.1";
+const version = "2.2.2";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const cp = require('child_process');
+const os = require('os');
 
 function transfer(datadir) {
 	console.log("Transfering old database...");
@@ -152,10 +153,7 @@ function runJob(c, request, username, userpub) {
 		default:
 			break;
 		case "status":
-			writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
-			break;
-		case "save":
-			writeEnc(userpub, c, "{\"status\":\"OK\"}\n");
+			writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\",\"host\":\"" + os.hostname() + "\",\"port\":\"" + port + "\"}\n");
 			break;
 		case "createuser":
 			if (user.permissions.indexOf("createuser") != -1) {
@@ -465,7 +463,7 @@ function serverListener(c) {
 				var request = JSON.parse(buffer);
 				buffer = "";
 				if (request.cmd == "status") {
-					writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\"}\n");
+					writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\",\"host\":\"" + os.hostname() + "\",\"port\":\"" + port + "\"}\n");
 				} else if (request.cmd == "login") {
 					if (user == undefined) {
 						var tmpuser = authmap.get(request.user);

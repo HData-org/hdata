@@ -6,6 +6,7 @@ if (cluster.isPrimary) {
 	var ready = 0;
 	var count = 200;
 	async function egg() {
+		console.log(`Primary - status - ${JSON.stringify(await conn.promises.status())}`);
 		console.log(`Primary - login - ${JSON.stringify(await conn.promises.login("root", "changeme"))}`);
 		console.log(`Primary - createtable - ${JSON.stringify(await conn.promises.createTable("test"))}`);
 		console.log(`Primary - close - ${JSON.stringify(await conn.promises.close())}`);
