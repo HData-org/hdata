@@ -297,6 +297,22 @@ exports.HData = function (options) {
 		var cmd = { "cmd": "tablekeys", "table": tableName };
 		return sendCmdPromise(cmd);
 	}
+	this.getProperty = function (tableName, keyName, path, callback) {
+		var cmd = { "cmd": "getproperty", "table": tableName, "key": keyName, "path": path};
+		this.sendCmd(cmd, callback);
+	}
+	this.promises.getProperty = function (tableName, keyName, path) {
+		var cmd = { "cmd": "getproperty", "table": tableName, "key": keyName, "path": path};
+		return sendCmdPromise(cmd);
+	}
+	this.setProperty = function (tableName, keyName, path, value, callback) {
+		var cmd = { "cmd": "setproperty", "table": tableName, "key": keyName, "path": path, "value": value};
+		this.sendCmd(cmd, callback);
+	}
+	this.promises.setProperty = function (tableName, keyName, path, value) {
+		var cmd = { "cmd": "setproperty", "table": tableName, "key": keyName, "path": path, "value": value};
+		return sendCmdPromise(cmd);
+	}
 	this.close = function(callback) {
 		var cmd = { "cmd": "logout" };
 		this.sendCmd(cmd, function(res, err) {

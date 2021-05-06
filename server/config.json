@@ -1,5 +1,6 @@
 {
 	"port":  8888,
 	"datadir": "./data",
-	"snapshotFrequency": 20000
+	"snapshotFrequency": 20000,
+	"logging": true
 }

@@ -60,7 +60,7 @@ Returns the server's status and how many pending jobs it has, including the acti
 
 ```js
 conn.status(function(res, err) {
-    console.log(`Server (version ${res.version}) has the status: ${res.status}, and has ${res.jobs} pending jobs. ${res.tables} tables exist in the database.`);
+    console.log(`Server (version ${res.version}) has the status: ${res.status}, and has ${res.jobs} pending jobs. ${res.tables} tables exist in the database. The hostname is ${res.hostname} and is on port ${res.port}.`);
 });
 ```
 
@@ -116,6 +116,16 @@ conn.deleteUser("testuser", function(res, err) {
 
 #### conn.getUser(username, callback)
 Returns an object containing the properties of the user ``username``. (Requires the currently logged in user to have the ``updateuser`` permission).
+
+```js
+conn.getUser("testuser", function(res, err) {
+    if (res.status == "OK") {
+        console.log(res.value);
+    } else {
+        console.log("Insufficient permissions");
+    }
+});
+```
 
 #### conn.updateUser(username, property, content, callback)
 Updates the ``property`` of ``username`` with the value of ``content`` in the authentication database. (Requires the currently logged in user to have the ``updateuser`` permission).
@@ -183,7 +193,7 @@ Gets the value of the key named ``keyName`` from the table named ``tableName``. 
 ```js
 conn.getKey("users", "herronjo", function(res,err) {
     if (!err) {
-        console.log(res);
+        console.log(res.value);
     } else {
         console.log(err);
     }
@@ -226,7 +236,7 @@ Returns a list of tables (that the user has access to) on the server.
 ```js
 conn.getTables(function(res, err) {
     if (!err) {
-        console.log(res); //Should return an array ["table1","table2"]
+        console.log(res.value); //Should return an array ["table1","table2"]
     } else {
         console.log(err);
     }
@@ -271,7 +281,7 @@ Checks if the table ``tableName`` already exists in the database. Requires the `
 ```js
 conn.tableExists("table", function(res,err) {
     if (!err) {
-        if (res) {
+        if (res.value) {
             console.log("Table exists!");
         } else {
             console.log("Table does not exist");
@@ -298,7 +308,6 @@ conn.tableSize("table", function(res,err) {
 #### conn.tableKeys(tableName, callback)
 Returns an array of the names of all keys in ``tableName``. Requires the ``getkey`` permission and that the user have permissions for the table.
 
-
 ```js
 conn.tableKeys("table", function(res,err) {
     if (!err) {
@@ -309,6 +318,31 @@ conn.tableKeys("table", function(res,err) {
 });
 ```
 
+#### conn.getProperty(tableName, keyName, path, callback)
+If the key ``keyName`` in the table ``tableName`` is an object, this returns the value of the property following the path provided by ``path``. Paths look like the following: ``property`` (for an object like ``{property: "value"}``), ``property.0`` (for an object like ``{property: ["a", "b"]}``), ``property.property2.property3`` (for an object like ``{property: {property2: {property3: "value"}}}``), ``0`` (for an array like ``["a", "b", "c"]``), etc.
+
+```js
+conn.getProperty("table", "key", "herronjo.posts.0", function(res,err) {
+    if (!err) {
+        console.log("Got herronjo's post #0: "+JSON.stringify(res.value));
+    } else {
+        console.log(err);
+    }
+});
+```
+
+#### conn.setProperty(tableName, keyName, path, value, callback)
+If the key ``keyName`` in the table ``tableName`` is an object, this sets the value of the property following the path provided by ``path``. Paths look like the following: ``property`` (for an object like ``{property: "value"}``), ``property.0`` (for an object like ``{property: ["a", "b"]}``), ``property.property2.property3`` (for an object like ``{property: {property2: {property3: "value"}}}``), ``0`` (for an array like ``["a", "b", "c"]``), etc.
+
+```js
+conn.setProperty("table", "key", "herronjo.posts.0.title", "A wonderful test", function(res,err) {
+    if (!err) {
+        console.log("Updated herronjo's post #0 title");
+    } else {
+        console.log(err);
+    }
+});
+```
 
 ## Error codes
 

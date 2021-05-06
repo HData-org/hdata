@@ -10,14 +10,17 @@ The default configuration file ([config.json](config.json)) looks a little somet
 {
 	"port":  8888,
 	"datadir": "./data",
-	"snapshotFrequency": 20000
+	"snapshotFrequency": 20000,
+	"logging": true
 }
 ```
 ``port`` specifies what port you want the server to listen on. The configuration on the HData module must match this in order to connect.
 
 ``datadir`` specifies the directory where all the data should be stored. By default, that's a folder called ``data`` in the same directory as where you ran the server, but it can be changed to a static path.
 
-Finally, ``snapshotFrequency`` specifies after how many records you want the server to take a snapshot. Snapshots help speed up the server's startup times. By default this is set to 20,000 records, but on lower end hardware it's recommended to set this lower.
+``snapshotFrequency`` specifies after how many records you want the server to take a snapshot. Snapshots help speed up the server's startup times. By default this is set to 20,000 records, but on lower end hardware it's recommended to set this lower.
+
+Finally, ``logging`` specifies if you want queries to be logged in the ``./logs`` folder.
 
 ### Creating an HData server
 #### NPM: 

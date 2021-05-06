@@ -5,10 +5,10 @@ process.on('uncaughtException', function (err) {
 	if (!(fs.existsSync("./logs"))) {
 		fs.mkdirSync("logs");
 	}
-	fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
+	if (config.logging) fs.appendFileSync("./logs/error.log", "[" + new Date().getTime() + "] " + err.toString() + "\n");
 });
 
-const version = "2.2.2";
+const version = "2.2.3";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -16,6 +16,14 @@ const path = require('path');
 const vm = require('vm');
 const cp = require('child_process');
 const os = require('os');
+
+function toTwo(num) {
+	var tmp = num.toString();
+	while (tmp.length < 2) {
+		tmp = "0"+tmp;
+	}
+	return tmp;
+}
 
 function transfer(datadir) {
 	console.log("Transfering old database...");
@@ -53,7 +61,12 @@ function load(map, authmap, datadir, since) {
 				var tmpmap = new Map();
 				map.set(table, tmpmap);
 				for (var key in tmpdb.db[table]) {
-					tmpmap.set(key, tmpdb.db[table]);
+					tmpmap.set(key, tmpdb.db[table][key]);
+				}
+			}
+			if (tmpdb.auth) {
+				for (var user in tmpdb.auth) {
+					authmap.set(user, tmpdb.auth[user]);
 				}
 			}
 			console.log("Loaded snapshot");
@@ -100,10 +113,29 @@ function load(map, authmap, datadir, since) {
 				case "setkey":
 					var tmpmap = map.get(tmpdata.table);
 					tmpmap.set(tmpdata.key, tmpdata.content);
+					map.set(tmpdata.table, tmpmap); //possibly unnecessary?
 					break;
 				case "deletekey":
 					var tmpmap = map.get(tmpdata.table);
 					tmpmap.delete(tmpdata.key);
+					map.set(tmpdata.table, tmpmap); //possibly unnecessary?
+					break;
+				case "setproperty":
+					var tmpmap = map.get(tmpdata.table);
+					var tmp = tmpmap.get(tmpdata.key);
+					function recurse(path, tmp, value) {
+						var returnValue;
+						if (path.length == 0) {
+							returnValue = value;
+						} else {
+							tmp[path[0]] = recurse(path.slice(1, path.length), tmp[path[0]], value);
+							returnValue = tmp;
+						}
+						return returnValue;
+					}
+					tmp = recurse(tmpdata.path.split("."), tmp, tmpdata.value);
+					tmpmap.set(tmpdata.key, tmp);
+					map.set(tmpdata.table, tmpmap); //possibly unnecessary?
 					break;
 			}
 		} catch(err) {
@@ -133,12 +165,15 @@ function transact(request, datadir) {
 	}
 	fs.writeFileSync(datadir + "/" + num, JSON.stringify(request));
 	if (num % (config.snapshotFrequency || 20000) == 0) {
-		var tmpdb = {"upTo": num, "db": {}};
+		var tmpdb = {"upTo": num, "db": {}, "auth": {}};
 		map.forEach(function(tmpmap, table) {
 			tmpdb.db[table] = {};
 			tmpmap.forEach(function(value, key) {
 				tmpdb.db[table][key] = value;
 			});
+		});
+		authmap.forEach(function(value, key) {
+			tmpdb.auth[key] = value;
 		});
 		fs.writeFileSync(config.datadir+"/snapshot", JSON.stringify(tmpdb));
 	}
@@ -146,9 +181,14 @@ function transact(request, datadir) {
 
 function runJob(c, request, username, userpub) {
 	var user = authmap.get(username);
+	var date = new Date();
 	if (!Array.isArray(user.permissions)) {
 		user.permissions = [];
 	}
+	if (!(fs.existsSync("./logs"))) {
+		fs.mkdirSync("logs");
+	}
+	if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${username} ${request.cmd}`);
 	switch (request.cmd) {
 		default:
 			break;
@@ -156,6 +196,7 @@ function runJob(c, request, username, userpub) {
 			writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\",\"host\":\"" + os.hostname() + "\",\"port\":\"" + port + "\"}\n");
 			break;
 		case "createuser":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.user}`);
 			if (user.permissions.indexOf("createuser") != -1) {
 				if (!authmap.has(request.user)) {
 					var good = true;
@@ -183,6 +224,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "deleteuser":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.user}`);
 			if (user.permissions.indexOf("deleteuser") != -1 && request.user != "root") {
 				if (authmap.has(request.user)) {
 					authmap.delete(request.user);
@@ -196,6 +238,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "getuser":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.user}`);
 			if (user.permissions.indexOf("updateuser") != -1) {
 				if (authmap.has(request.user)) {
 					var tmpuser = JSON.parse(JSON.stringify(authmap.get(request.user)));
@@ -210,6 +253,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "updateuser":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.user} ${request.property}`);
 			if (user.permissions.indexOf("updateuser") != -1) {
 				if (authmap.has(request.user)) {
 					var tmpuser = authmap.get(request.user);
@@ -225,6 +269,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "updatepassword":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.user}`);
 			var good = true;
 			if (request.user == "" || request.user == undefined) {request.user = username;}
 			if (user.permissions.indexOf("updateuser") == -1 && request.user != username) {
@@ -250,6 +295,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "createtable":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table}`);
 			if (user.permissions.indexOf("createtable") != -1) {
 				if (map.has(request.table)) {
 					writeEnc(userpub, c, "{\"status\":\"TE\"}\n");
@@ -272,6 +318,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "deletetable":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table}`);
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("deletetable") != -1 && user.tables.indexOf(request.table) != -1) {
 					map.delete(request.table);
@@ -293,26 +340,29 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "getkey":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table} ${request.key}`);
 			if (map.has(request.table)) {
-				var tmpmap = map.get(request.table);
-				if (tmpmap.has(request.key)) {
-					if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
+				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
+					var tmpmap = map.get(request.table);
+					if (tmpmap.has(request.key)) {
 						writeEnc(userpub, c, JSON.stringify({status:"OK",value:tmpmap.get(request.key)}) + "\n");
 					} else {
-						writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
+						writeEnc(userpub, c, "{\"status\":\"KDNE\"}\n");
 					}
 				} else {
-					writeEnc(userpub, c, "{\"status\":\"KDNE\"}\n");
+					writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
 				}
 			} else {
 				writeEnc(userpub, c, "{\"status\":\"TDNE\"}\n");
 			}
 			break;
 		case "setkey":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table} ${request.key}`);
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("setkey") != -1 && user.tables.indexOf(request.table) != -1) {
 					var tmpmap = map.get(request.table);
 					tmpmap.set(request.key, request.content);
+					map.set(request.table, tmpmap); //possibly unnecessary?
 					transact(request, config.datadir);
 					writeEnc(userpub, c, "{\"status\":\"OK\"}\n");
 				} else {
@@ -323,11 +373,13 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "deletekey":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table} ${request.key}`);
 			if (map.has(request.table)) {
 				var tmpmap = map.get(request.table);
 				if (tmpmap.has(request.key)) {
 					if (user.permissions.indexOf("deletekey") != -1 && user.tables.indexOf(request.table) != -1) {
 						tmpmap.delete(request.key, request.value);
+						map.set(request.table, tmpmap); //possibly unnecessary?
 						transact(request, config.datadir);
 						writeEnc(userpub, c, "{\"status\":\"OK\"}\n");
 					} else {
@@ -341,6 +393,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "queryall":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.evaluator}`);
 			if (user.permissions.indexOf("getkey") != -1) {
 				var ctx = vm.createContext({"evaluator": request.evaluator});
 				var response = { "status": "OK", "matches": [] };
@@ -356,7 +409,7 @@ function runJob(c, request, username, userpub) {
 						try {
 							result = vm.runInContext(request.evaluator, ctx);
 						} catch(err) {
-							writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+							//writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
 						}
 						if (result) {
 							response.matches.push({ "table": table, "key": key, "value": value });
@@ -369,6 +422,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "querytable":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table} ${request.evaluator}`);
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
 					var ctx = vm.createContext({"table": request.table, "evaluator": request.evaluator});
@@ -381,7 +435,7 @@ function runJob(c, request, username, userpub) {
 						try {
 							result = vm.runInContext(request.evaluator, ctx);
 						} catch(err) {
-							writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+							//writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
 						}
 						if (result) {
 							response.matches.push({ "table": request.table, "key": key, "value": value });
@@ -396,6 +450,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "tableexists":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table}`);
 			if (user.permissions.indexOf("getkey") != -1) {
 				if (map.has(request.table)) {
 					writeEnc(userpub, c, "{\"status\":\"OK\",\"value\":true}\n");
@@ -407,6 +462,7 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "tablesize":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table}`);
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
 					var tmpmap = map.get(request.table);
@@ -419,12 +475,12 @@ function runJob(c, request, username, userpub) {
 			}
 			break;
 		case "tablekeys":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table}`);
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
 					var tmpmap = map.get(request.table);
 					writeEnc(userpub, c, "{\"status\":\"OK\",\"keys\":"+JSON.stringify(Array.from(tmpmap.keys()))+"}\n");
 				} else {
-					writeEnc(userpub, c, "{\"status\":\"TDNE\"}\n");
 					writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
 				}
 			} else {
@@ -435,7 +491,93 @@ function runJob(c, request, username, userpub) {
 			var list = user.tables;
 			writeEnc(userpub, c, JSON.stringify({status:"OK",value:list})+"\n");
 			break;
+		case "getproperty":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table} ${request.key} ${request.path}`);
+			var path = request.path.split(".");
+			if (map.has(request.table)) {
+				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
+					var tmpmap = map.get(request.table);
+					if (tmpmap.has(request.key)) {
+						var tmp = tmpmap.get(request.key);
+						if (typeof tmp == "object") {
+							var good = true;
+							for (var i = 0; i < path.length && good; i++) {
+								if (tmp[path[i]] != undefined) {
+									tmp = tmp[path[i]];
+								} else {
+									good = false;
+								}
+							}
+							if (good) {
+								writeEnc(userpub, c, JSON.stringify({status:"OK",value:tmp})+"\n");
+							} else {
+								writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+							}
+						} else {
+							writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+						}
+					} else {
+						writeEnc(userpub, c, "{\"status\":\"KDNE\"}\n");
+					}
+				} else {
+					writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
+				}
+			} else {
+				writeEnc(userpub, c, "{\"status\":\"TDNE\"}\n");
+			}
+			break;
+		case "setproperty":
+			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table} ${request.key} ${request.path}`);
+			var path = request.path.split(".");
+			if (map.has(request.table)) {
+				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
+					var tmpmap = map.get(request.table);
+					if (tmpmap.has(request.key)) {
+						var tmp = tmpmap.get(request.key);
+						if (typeof tmp == "object") {
+							var good = true;
+							for (var i = 0; i < path.length && good; i++) {
+								if (tmp[path[i]] != undefined) {
+									tmp = tmp[path[i]];
+								} else {
+									good = false;
+								}
+							}
+							if (good) {
+								var tmp = tmpmap.get(request.key);
+								function recurse(path, tmp, value) {
+									var returnValue;
+									if (path.length == 0) {
+										returnValue = value;
+									} else {
+										tmp[path[0]] = recurse(path.slice(1, path.length), tmp[path[0]], value);
+										returnValue = tmp;
+									}
+									return returnValue;
+								}
+								tmp = recurse(path, tmp, request.value);
+								tmpmap.set(request.key, tmp);
+								map.set(request.table, tmpmap); //possibly unnecessary?
+								transact(request, config.datadir);
+								writeEnc(userpub, c, "{\"status\":\"OK\"}\n");
+							} else {
+								writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+							}
+						} else {
+							writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+						}
+					} else {
+						writeEnc(userpub, c, "{\"status\":\"KDNE\"}\n");
+					}
+				} else {
+					writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
+				}
+			} else {
+				writeEnc(userpub, c, "{\"status\":\"TDNE\"}\n");
+			}
+			break;
 	}
+	if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `\r\n`);
 	jobs.shift();
 	if (jobs.length > 0) {
 		runJob(jobs[0].c, jobs[0].request, jobs[0].user, jobs[0].userpub);
@@ -464,7 +606,17 @@ function serverListener(c) {
 				buffer = "";
 				if (request.cmd == "status") {
 					writeEnc(userpub, c, "{\"status\":\"OK\",\"version\":\"" + version + "\",\"jobs\":\"" + jobs.length + "\",\"tables\":\"" + map.size + "\",\"host\":\"" + os.hostname() + "\",\"port\":\"" + port + "\"}\n");
+					var date = new Date();
+					if (!(fs.existsSync("./logs"))) {
+						fs.mkdirSync("logs");
+					}
+					if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${username || c.remoteAddress} ${request.cmd}\r\n`);
 				} else if (request.cmd == "login") {
+					var date = new Date();
+					if (!(fs.existsSync("./logs"))) {
+						fs.mkdirSync("logs");
+					}
+					if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${c.remoteAddress} ${request.cmd} ${request.user}`);
 					if (user == undefined) {
 						var tmpuser = authmap.get(request.user);
 						if (tmpuser != undefined) {
@@ -474,17 +626,26 @@ function serverListener(c) {
 									username = request.user;
 									user = tmpuser;
 									writeEnc(userpub, c, '{"status":"OK"}\n');
+									if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", " succeeded\r\n");
 								} else {
 									writeEnc(userpub, c, '{"status":"AERR"}\n');
+									if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", " failed\r\n");
 								}
 							});
 						} else {
 							writeEnc(userpub, c, '{"status":"AERR"}\n');
+							if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", " failed\r\n");
 						}
 					} else {
 						writeEnc(userpub, c, '{"status":"LI"}\n');
+						if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", " failed\r\n");
 					}
 				} else if (request.cmd == "logout") {
+					var date = new Date();
+					if (!(fs.existsSync("./logs"))) {
+						fs.mkdirSync("logs");
+					}
+					if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${username || c.remoteAddress} ${request.cmd}\r\n`);
 					if (user != undefined) {
 						user = undefined;
 						writeEnc(userpub, c, '{"status":"OK"}\n');
@@ -523,10 +684,13 @@ if (process.argv.indexOf("-c") != -1) {
 	port = parseInt(process.argv[process.argv.indexOf("--config") + 1]);
 }
 
-var config = {"port":8888, "datadir": "./data", "snapshotFrequency": 20000};
+var config = {"port":8888, "datadir": "./data", "snapshotFrequency": 20000, "logging": true};
 
 if (fs.existsSync(configpath)) {
 	config = JSON.parse(fs.readFileSync(configpath));
+	if (config.logging == undefined) {
+		config.logging = true;
+	}
 }
 
 if (process.argv.indexOf("-l") != -1) {
