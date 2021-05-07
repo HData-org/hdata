@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+"use strict";
 
 process.on('uncaughtException', function (err) {
 	console.log(err);
@@ -188,7 +189,7 @@ function runJob(c, request, username, userpub) {
 	if (!(fs.existsSync("./logs"))) {
 		fs.mkdirSync("logs");
 	}
-	if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${username} ${request.cmd}`);
+	if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${c.remoteAddress} ${username} ${request.cmd}`);
 	switch (request.cmd) {
 		default:
 			break;
@@ -610,7 +611,7 @@ function serverListener(c) {
 					if (!(fs.existsSync("./logs"))) {
 						fs.mkdirSync("logs");
 					}
-					if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${username || c.remoteAddress} ${request.cmd}\r\n`);
+					if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${c.remoteAddress} ${username || c.remoteAddress} ${request.cmd}\r\n`);
 				} else if (request.cmd == "login") {
 					var date = new Date();
 					if (!(fs.existsSync("./logs"))) {
@@ -645,7 +646,7 @@ function serverListener(c) {
 					if (!(fs.existsSync("./logs"))) {
 						fs.mkdirSync("logs");
 					}
-					if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${username || c.remoteAddress} ${request.cmd}\r\n`);
+					if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", `[${toTwo(date.getUTCHours())}:${toTwo(date.getUTCMinutes())}:${toTwo(date.getUTCSeconds())}] ${c.remoteAddress} ${username || c.remoteAddress} ${request.cmd}\r\n`);
 					if (user != undefined) {
 						user = undefined;
 						writeEnc(userpub, c, '{"status":"OK"}\n');
