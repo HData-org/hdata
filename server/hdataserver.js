@@ -408,7 +408,7 @@ function runJob(c, request, username, userpub) {
 						ctx.value = value;
 						var result = false;
 						try {
-							result = vm.runInContext(request.evaluator, ctx);
+							result = vm.runInContext(request.evaluator, ctx, {timeout: 500});
 						} catch(err) {
 							//writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
 						}
@@ -434,7 +434,7 @@ function runJob(c, request, username, userpub) {
 						ctx.value = value;
 						var result = false;
 						try {
-							result = vm.runInContext(request.evaluator, ctx);
+							result = vm.runInContext(request.evaluator, ctx, {timeout: 500});
 						} catch(err) {
 							//writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
 						}
