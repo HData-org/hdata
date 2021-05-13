@@ -4,3 +4,4 @@ server/data.json
 server/priv.pem
 server/pub.pem
 *.pem
+tests/

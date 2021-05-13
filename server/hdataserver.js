@@ -13,10 +13,17 @@ const version = "2.2.3";
 const net = require('net');
 const crypto = require('crypto');
 const fs = require('fs');
-const path = require('path');
+const fpath = require('path');
 const vm = require('vm');
-const cp = require('child_process');
 const os = require('os');
+const numCpus = os.cpus().length;
+const worker_threads = require('worker_threads');
+var workers = [];
+
+for (var i = 0; i < numCpus; i++) {
+	var worker = new worker_threads.Worker(fpath.dirname(fs.realpathSync(__filename)) + '/query.js', {});
+	workers.push(worker);
+}
 
 function toTwo(num) {
 	var tmp = num.toString();
@@ -24,6 +31,16 @@ function toTwo(num) {
 		tmp = "0"+tmp;
 	}
 	return tmp;
+}
+
+function split(arr, num) {
+	var returnValue = [];
+	var numInEach = arr.length / num;
+	var i = 0;
+	while (i < arr.length) {
+		returnValue.push(arr.slice(i, i += numInEach));
+	}
+	return returnValue;
 }
 
 function transfer(datadir) {
@@ -396,28 +413,39 @@ function runJob(c, request, username, userpub) {
 		case "queryall":
 			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.evaluator}`);
 			if (user.permissions.indexOf("getkey") != -1) {
-				var ctx = vm.createContext({"evaluator": request.evaluator});
+				//var ctx = vm.createContext({"evaluator": request.evaluator});
 				var response = { "status": "OK", "matches": [] };
 				var keys = user.tables;
-				for (var tablei in keys) {
+				var finished = 0;
+				function queryTable(tablei) {
 					var table = keys[tablei];
 					var tmpmap = map.get(table);
-					for (const [key, value] of tmpmap.entries()) {
-						ctx.table = table;
-						ctx.key = key;
-						ctx.value = value;
-						var result = false;
-						try {
-							result = vm.runInContext(request.evaluator, ctx, {timeout: 500});
-						} catch(err) {
-							//writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+					var splitEntries = split(Array.from(tmpmap.entries()), numCpus);
+					var tfinished = 0;
+					for (var i = 0; i < numCpus; i++) {
+						workers[i].postMessage({table: request.table, evaluator: request.evaluator, entries: splitEntries[i], i: i});
+						function wlisten(wdata) {
+							if (wdata.type == "result") {
+								response.matches.push({"table": request.table, "key": wdata.result, "value": tmpmap.get(wdata.result)});
+							} else if (wdata.type == "finished") {
+								tfinished++;
+								if (tfinished == numCpus) {
+									finished++;
+									if (finished == keys.length) {
+										writeEnc(userpub, c, JSON.stringify(response) + "\n");
+									} else {
+										queryTable(tablei + 1);
+									}
+								}
+								workers[wdata.i].removeListener('message', wlisten);
+							}
 						}
-						if (result) {
-							response.matches.push({ "table": table, "key": key, "value": value });
-						}
+						workers[i].addListener('message', wlisten);
 					}
 				}
-				writeEnc(userpub, c, JSON.stringify(response) + "\n");
+				if (keys.length > 0) {
+					queryTable(0);
+				}
 			} else {
 				writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
 			}
@@ -426,23 +454,25 @@ function runJob(c, request, username, userpub) {
 			if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", ` ${request.table} ${request.evaluator}`);
 			if (map.has(request.table)) {
 				if (user.permissions.indexOf("getkey") != -1 && user.tables.indexOf(request.table) != -1) {
-					var ctx = vm.createContext({"table": request.table, "evaluator": request.evaluator});
 					var response = {"status":"OK","matches":[]};
 					var tmpmap = map.get(request.table);
-					for (const [key, value] of tmpmap.entries()) {
-						ctx.key = key;
-						ctx.value = value;
-						var result = false;
-						try {
-							result = vm.runInContext(request.evaluator, ctx, {timeout: 500});
-						} catch(err) {
-							//writeEnc(userpub, c, "{\"status\":\"EVERR\"}\n");
+					var splitEntries = split(Array.from(tmpmap.entries()), numCpus);
+					var tfinished = 0;
+					for (var i = 0; i < numCpus; i++) {
+						workers[i].postMessage({table: request.table, evaluator: request.evaluator, entries: splitEntries[i], i: i});
+						function wlisten(wdata) {
+							if (wdata.type == "result") {
+								response.matches.push({"table": request.table, "key": wdata.result, "value": tmpmap.get(wdata.result)});
+							} else if (wdata.type == "finished") {
+								tfinished++;
+								if (tfinished == numCpus) {
+									writeEnc(userpub, c, JSON.stringify(response) + "\n");
+								}
+								workers[wdata.i].removeListener('message', wlisten);
+							}
 						}
-						if (result) {
-							response.matches.push({ "table": request.table, "key": key, "value": value });
-						}
+						workers[i].addListener('message', wlisten);
 					}
-					writeEnc(userpub, c, JSON.stringify(response)+"\n");
 				} else {
 					writeEnc(userpub, c, "{\"status\":\"PERR\"}\n");
 				}
@@ -586,6 +616,7 @@ function runJob(c, request, username, userpub) {
 }
 
 function serverListener(c) {
+	var hashWorker = new worker_threads.Worker(fpath.dirname(fs.realpathSync(__filename)) + '/hash.js', {});
 	var buffer = "";
 	var userpub = "";
 	var user = undefined;
@@ -621,8 +652,7 @@ function serverListener(c) {
 					if (user == undefined) {
 						var tmpuser = authmap.get(request.user);
 						if (tmpuser != undefined) {
-							var child = cp.fork(path.dirname(fs.realpathSync(__filename)) + '/hash.js', [], {serialization: 'json', env: {password: request.password, passsalt: tmpuser.passsalt, passhash: tmpuser.passhash}});
-							child.on('message', function(data) {
+							function auth(data) {
 								if (data) {
 									username = request.user;
 									user = tmpuser;
@@ -632,7 +662,10 @@ function serverListener(c) {
 									writeEnc(userpub, c, '{"status":"AERR"}\n');
 									if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", " failed\r\n");
 								}
-							});
+								hashWorker.removeListener('message', auth);
+							}
+							hashWorker.on('message', auth);
+							hashWorker.postMessage({password: request.password, passsalt: tmpuser.passsalt, passhash: tmpuser.passhash});
 						} else {
 							writeEnc(userpub, c, '{"status":"AERR"}\n');
 							if (config.logging) fs.appendFileSync("logs/"+date.getUTCFullYear()+"-"+date.getUTCDate()+"-"+(date.getUTCMonth()+1)+".log", " failed\r\n");
